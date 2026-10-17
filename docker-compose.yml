@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: trustmesh
+      POSTGRES_USER: trustmesh
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trustmesh -d trustmesh"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  cache:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  app:
+    build: .
+    environment:
+      TRUSTMESH_ENV: ${TRUSTMESH_ENV:-dev}
+      TRUSTMESH_ADMIN_KEY: ${TRUSTMESH_ADMIN_KEY:-dev-key}
+      TRUSTMESH_TOKEN_SECRET: ${TRUSTMESH_TOKEN_SECRET:-trustmesh-local-development-secret-change-me}
+      TRUSTMESH_DATA_KEY: ${TRUSTMESH_DATA_KEY:-trustmesh-local-development-data-key-change-me}
+      TRUSTMESH_DATABASE_URL: postgresql+psycopg://trustmesh:${POSTGRES_PASSWORD:-change-me-local-only}@db:5432/trustmesh
+      TRUSTMESH_REDIS_URL: redis://cache:6379/0
+      TRUSTMESH_DOCS: ${TRUSTMESH_DOCS:-true}
+      TRUSTMESH_BOOTSTRAP_EMAIL: ${TRUSTMESH_BOOTSTRAP_EMAIL:-}
+      TRUSTMESH_BOOTSTRAP_PASSWORD: ${TRUSTMESH_BOOTSTRAP_PASSWORD:-}
+    ports:
+      - "127.0.0.1:${TRUSTMESH_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/readyz', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+volumes:
+  postgres_data:
+  redis_data:

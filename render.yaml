@@ -1,0 +1,51 @@
+# Render Blueprint for a no-cost portfolio/demo deployment.
+# Free Postgres and Key Value instances have platform limits and are not a
+# production durability tier. Upgrade both plans before storing real customer data.
+services:
+  - type: web
+    name: trustmesh
+    runtime: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: alembic upgrade head && python bootstrap_admin.py && uvicorn app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /readyz
+    envVars:
+      - key: TRUSTMESH_ENV
+        value: production
+      - key: TRUSTMESH_ADMIN_KEY
+        generateValue: true
+      - key: TRUSTMESH_TOKEN_SECRET
+        generateValue: true
+      - key: TRUSTMESH_DATA_KEY
+        generateValue: true
+      - key: TRUSTMESH_DATABASE_URL
+        fromDatabase:
+          name: trustmesh-db
+          property: connectionString
+      - key: TRUSTMESH_REDIS_URL
+        fromService:
+          name: trustmesh-cache
+          type: keyvalue
+          property: connectionString
+      - key: TRUSTMESH_DOCS
+        value: "false"
+      - key: TRUSTMESH_BOOTSTRAP_EMAIL
+        sync: false
+      - key: TRUSTMESH_BOOTSTRAP_PASSWORD
+        sync: false
+
+  - type: keyvalue
+    name: trustmesh-cache
+    region: oregon
+    plan: free
+    ipAllowList: []
+
+databases:
+  - name: trustmesh-db
+    region: oregon
+    plan: free
+    postgresMajorVersion: "16"
+    databaseName: trustmesh
+    user: trustmesh
+    ipAllowList: []

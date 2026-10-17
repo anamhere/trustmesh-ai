@@ -1,0 +1,64 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "TrustMesh: Migrate local database",
+      "type": "process",
+      "command": "${workspaceFolder}\\.venv\\Scripts\\alembic.exe",
+      "args": ["upgrade", "head"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "TRUSTMESH_ENV": "dev",
+          "TRUSTMESH_DATABASE_URL": "sqlite:///./trustmesh_workspace.db"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "TrustMesh: Run API",
+      "type": "process",
+      "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "uvicorn", "app:app", "--host", "127.0.0.1", "--port", "8000", "--reload"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "TRUSTMESH_ENV": "dev",
+          "TRUSTMESH_ADMIN_KEY": "dev-key",
+          "TRUSTMESH_DATABASE_URL": "sqlite:///./trustmesh_workspace.db"
+        }
+      },
+      "dependsOn": ["TrustMesh: Migrate local database"],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      "label": "TrustMesh: Run tests",
+      "type": "process",
+      "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "pytest", "-q"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "TrustMesh: Evaluate sample rules",
+      "type": "process",
+      "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+      "args": ["evaluate_dataset.py"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "TrustMesh: Docker Compose",
+      "type": "process",
+      "command": "docker",
+      "args": ["compose", "up", "--build"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": { "TRUSTMESH_PORT": "8001" }
+      },
+      "problemMatcher": []
+    }
+  ]
+}
